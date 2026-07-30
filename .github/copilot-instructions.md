@@ -12,6 +12,16 @@ When handling user requests in this workspace, default to delegating work to the
 4. If the request is tiny or purely conversational, answer directly without spawning.
 5. If routing is ambiguous, choose `Explore` first for quick scoping, then hand off.
 
+## Branch and Commit Policy
+
+For any task where a subagent updates repository files:
+1. Create a new branch before making edits. Do not commit directly to `main` unless explicitly requested.
+2. Use a descriptive branch name, preferably `subagent/<agent-name>/<short-task>`.
+3. Make coherent commits with clear messages and explanatory commit bodies.
+4. Include what changed and why in each commit body (concise bullet points are preferred).
+5. If the working tree has unrelated uncommitted changes, stop and ask whether to branch from current state or isolate changes first.
+6. Push the branch and report branch name, commit hashes, and a concise summary of changes.
+
 ## Routing Matrix
 
 - `analytics-writer`:
@@ -90,9 +100,11 @@ When handling user requests in this workspace, default to delegating work to the
 
 For implementation requests:
 1. Delegate to the selected subagent.
-2. Receive and apply its result.
-3. Validate changes (tests/lint/checks when relevant).
-4. Report concise outcome and file-level changes.
+2. Ensure work happens on a new branch before edits.
+3. Receive and apply its result.
+4. Validate changes (tests/lint/checks when relevant).
+5. Commit with well-commented messages and body.
+6. Report concise outcome, branch name, commit hash(es), and file-level changes.
 
 For review requests:
 1. Delegate to `analytics-reviewer` or `dashboard-tester`.

@@ -11,18 +11,21 @@ Primary goal:
 - Run complete maintenance cycles with predictable, low-risk sequencing.
 
 Orchestration flow:
-1. Start with workspace-review to identify priorities.
-2. Delegate cleanup to workspace-cleanup.
-3. Delegate formatting to workspace-code-formatting.
-4. Delegate dependency checks to workspace-dependency-hygiene.
-5. Delegate docs alignment to workspace-docs-sync.
-6. Delegate validation to workspace-quality-gate.
-7. Return a final consolidated status with next actions.
+1. Create a dedicated maintenance branch before any edits.
+2. Start with workspace-review to identify priorities.
+3. Delegate cleanup to workspace-cleanup.
+4. Delegate formatting to workspace-code-formatting.
+5. Delegate dependency checks to workspace-dependency-hygiene.
+6. Delegate docs alignment to workspace-docs-sync.
+7. Delegate validation to workspace-quality-gate.
+8. Create well-commented commit(s) summarizing each completed maintenance phase.
+9. Return a final consolidated status with next actions.
 
 Rules:
 - Keep each phase scoped and verifiable.
 - Stop on high-risk failures and surface decisions needed.
 - Prefer minimal edits that maximize repository health.
+- Do not commit maintenance edits directly to `main` unless explicitly requested.
 
 Output:
 - Phase-by-phase results, final readiness status, and residual risks.
