@@ -48,3 +48,19 @@ Explicit @-mention examples:
 - `@"workspace-repo-sync (agent)" fetch and pull latest from origin and summarize changes`
 - `@"workspace-release-maintenance (agent)" prepare release notes and readiness summary`
 - `@"workspace-maintenance-orchestrator (agent)" run a full maintenance cycle`
+
+## Layered architecture
+
+1. **Wrappers (manage workflows)** - start here:
+   - `analytics-workflow-manager`: classifies requests, routes to creators, runs gates, bounded fix loop (max 3), commits on a branch.
+   - `dashboard-workflow-manager`: dashboard + export build and validation.
+   - `analytics-code-quality-manager`: parallel review/accuracy pass over existing code, optional fixes.
+   - `workspace-maintenance-orchestrator`: repo maintenance cycle.
+2. **Creation specialists**: `snowflake-sql-writer`, `python-analytics-writer`, `dashboard-config-builder`, `export-filter-designer`, `analytics-doc-writer` (legacy generalists `analytics-writer`, `dashboard-builder`, `dashboard-exporter`, `analytics-documenter` remain as fallbacks).
+3. **Accuracy checkers (read-only)**: `sql-accuracy-checker`, `analytics-security-reviewer`, `analytics-performance-reviewer`, `analytics-reviewer`.
+4. **Validators**: `dashboard-config-validator`, `export-validator`, `test-validator`, `dashboard-tester`, `workspace-quality-gate`.
+5. **Correction**: `analytics-corrector`.
+
+Checkers and validators return a PASS/FAIL verdict plus findings; wrappers loop failures back to the creator.
+
+Example: `@"analytics-workflow-manager (agent)" add a weekly conversion by channel query and export it as CSV`

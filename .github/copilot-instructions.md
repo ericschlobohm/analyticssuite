@@ -1,4 +1,4 @@
-# Subagent Delegation Policy
+﻿# Subagent Delegation Policy
 
 This repository uses custom subagents in `.claude/agents/`.
 
@@ -22,6 +22,15 @@ For any task where a subagent updates repository files:
 5. If the working tree has unrelated uncommitted changes, stop and ask whether to branch from current state or isolate changes first.
 6. Push the branch and report branch name, commit hashes, and a concise summary of changes.
 
+## Wrapper-First Routing
+
+For analytics, dashboard, or export work, delegate first to a wrapper agent, which routes to specialists and runs accuracy/validation gates:
+- `analytics-workflow-manager` (default entry point for new work)
+- `dashboard-workflow-manager` (dashboards and exports)
+- `analytics-code-quality-manager` (review/fix of existing code)
+- `workspace-maintenance-orchestrator` (repo maintenance)
+
+Specialists: `snowflake-sql-writer`, `python-analytics-writer`, `dashboard-config-builder`, `export-filter-designer`, `analytics-doc-writer`; checkers: `sql-accuracy-checker`, `analytics-security-reviewer`, `analytics-performance-reviewer`; validators: `dashboard-config-validator`, `export-validator`, `test-validator`.
 ## Routing Matrix
 
 - `analytics-writer`:
