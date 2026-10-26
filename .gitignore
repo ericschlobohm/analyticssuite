@@ -134,3 +134,6 @@ dmypy.json
 config/*.local.yaml
 logs/
 *.db
+
+# Downloaded CMS raw files
+data/cms_raw/
