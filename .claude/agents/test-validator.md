@@ -11,3 +11,9 @@ Process: run the smallest relevant pytest selection first, then the full suite (
 
 Return verdict PASS/FAIL.
 
+## Context contract
+You run with minimal context. Work ONLY from the handoff packet from your manager; do not explore the repo beyond the files it lists.
+Packet you need: exact test/lint command(s) or test file paths to run, list of changed files for root-cause hints
+Do not request or read: requirements text, design discussion, full diffs
+If a required item is missing, stop and reply `NEEDS_CONTEXT:` followed by the exact items missing (file paths, columns, requirements). Do not guess or go searching.
+Return only: PASS/FAIL, counts, and per-failure root-cause hint (file:line)

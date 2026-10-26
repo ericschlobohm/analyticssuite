@@ -1,7 +1,13 @@
-﻿import pandas as pd
+﻿import sys
+from pathlib import Path
+
+import pandas as pd
 import pytest
 
-from snowflake_analytics_agents import cms_medicare as cms
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "examples" / "cms_medicare"))
+
+import cms_data as cms  # noqa: E402
+from snowflake_analytics_agents.dashboard_toolkit import first_last_change  # noqa: E402
 
 
 def _gpci(year, work, pe, mp):
@@ -38,7 +44,8 @@ def test_change_summary_ranks_by_pct_change():
     yearly = pd.DataFrame(
         {"state": ["A", "A", "B", "B"], "year": [2022, 2026, 2022, 2026], "gaf": [1.0, 1.1, 1.0, 0.9]}
     )
-    s = cms.change_summary(yearly, "gaf")
+    s = first_last_change(yearly, "gaf")
     assert list(s["state"]) == ["A", "B"]
     assert s["pct_change"].iloc[0] == pytest.approx(10.0)
     assert s["pct_change"].iloc[1] == pytest.approx(-10.0)
+

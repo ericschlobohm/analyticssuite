@@ -31,3 +31,19 @@ Step 5 - Fix loop: send FAIL findings back to the original creation specialist (
 
 Step 6 - Finish: commit with a descriptive body, push the branch, and report: branch, commits, files changed, each gate verdict, residual risks.
 
+## Context packets (minimal-context delegation)
+Specialists start with no conversation history and little context. You decide what each one gets. For every delegation:
+1. Identify the smallest set of inputs the agent needs (see its `Context contract` section): exact file paths, schemas (names/types, not data), requirements, upstream assumptions.
+2. Gather them yourself with Read/Grep/Glob. Pass paths and short excerpts, not whole files or chat history; sample data at most 20 rows.
+3. Send the packet in this form: `TASK` (one sentence), `INPUTS` (paths/excerpts), `CONSTRAINTS` (style, branch, scope limits), `ACCEPTANCE` (what PASS means), `RETURN` (expected output).
+4. Checkers and validators get only the artifact plus the requirements/assumptions it is judged against, never the creator's reasoning.
+5. If an agent replies `NEEDS_CONTEXT`, supply exactly the missing items and retry once; do not widen the packet otherwise.
+6. Pass between stages only what the next agent needs (e.g. the writer's assumptions list goes to the accuracy checker, not the full transcript).
+
+Typical packets:
+- snowflake-sql-writer: requirements, metrics/grain, table schema, style-reference file
+- python-analytics-writer: requirement, target paths, signatures of modules to call
+- sql-accuracy-checker: SQL + requirements + writer assumptions + schema
+- analytics-security-reviewer / analytics-performance-reviewer: file paths or diff + data origin / volume hints
+- test-validator: test command + changed files
+- analytics-doc-writer: code paths + audience + creator summary

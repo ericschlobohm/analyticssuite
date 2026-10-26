@@ -1,4 +1,4 @@
-﻿"""Medicare Physician Fee Schedule (PFS) data: GPCI/GAF by locality and procedure payments.
+"""Medicare Physician Fee Schedule (PFS) data: GPCI/GAF by locality and procedure payments.
 
 Source: CMS PFS Relative Value Files (https://www.cms.gov/medicare/payment/fee-schedules/physician/pfs-relative-value-files).
 Each yearly zip contains the GPCI addendum (Addendum E) and the national RVU file with the conversion factor.
@@ -6,12 +6,13 @@ Each yearly zip contains the GPCI addendum (Addendum E) and the national RVU fil
 
 from __future__ import annotations
 
-import io
-import zipfile
+import sys
 from pathlib import Path
 
 import pandas as pd
-import requests
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
+from snowflake_analytics_agents.dashboard_toolkit import common_keys, download_zip  # noqa: E402
 
 YEARS = [2022, 2023, 2024, 2025, 2026]
 
@@ -44,20 +45,14 @@ PROCEDURES = {
     "27447": ("Total knee replacement", "facility"),
 }
 
-_UA = {"User-Agent": "Mozilla/5.0"}
-
-
 def download_year(year: int, raw_dir: Path) -> Path:
     """Download and extract one year's RVU zip (cached); returns the extraction directory."""
-    target = raw_dir / f"rvu{year}"
-    if target.exists() and any(target.glob("*GPCI*.csv")):
-        return target
-    raw_dir.mkdir(parents=True, exist_ok=True)
-    resp = requests.get(CMS_ZIP_URLS[year], headers=_UA, timeout=120)
-    resp.raise_for_status()
-    with zipfile.ZipFile(io.BytesIO(resp.content)) as zf:
-        zf.extractall(target)
-    return target
+    return download_zip(CMS_ZIP_URLS[year], raw_dir / f"rvu{year}", marker_glob="*GPCI*.csv")
+
+
+def common_localities(df: pd.DataFrame) -> pd.DataFrame:
+    """Restrict to localities present in every year so comparisons are like-for-like."""
+    return common_keys(df, ["state", "locality"])
 
 
 def _find(directory: Path, pattern: str) -> Path:
@@ -131,15 +126,6 @@ def compute_payments(gpci: pd.DataFrame, rvu: pd.DataFrame) -> pd.DataFrame:
     return merged[cols]
 
 
-def common_localities(df: pd.DataFrame) -> pd.DataFrame:
-    """Restrict to localities present in every year so comparisons are like-for-like."""
-    n_years = df["year"].nunique()
-    counts = df.groupby(["state", "locality"])["year"].nunique()
-    keep = counts[counts == n_years].index
-    idx = pd.MultiIndex.from_frame(df[["state", "locality"]])
-    return df[idx.isin(keep)].copy()
-
-
 def latest_names(df: pd.DataFrame) -> pd.DataFrame:
     """Latest-year name per locality, to keep labels stable across years."""
     last = df[df["year"] == df["year"].max()][["state", "locality", "locality_name"]].drop_duplicates()
@@ -149,21 +135,6 @@ def latest_names(df: pd.DataFrame) -> pd.DataFrame:
 def state_yearly(df: pd.DataFrame, value: str) -> pd.DataFrame:
     """Unweighted mean of `value` across a state's common localities, per year."""
     return df.groupby(["state", "year"], as_index=False)[value].mean()
-
-
-def change_summary(yearly: pd.DataFrame, value: str, key: str = "state") -> pd.DataFrame:
-    """First-to-last-year absolute and percent change per key, ranked by percent change."""
-    wide = yearly.pivot(index=key, columns="year", values=value)
-    first, last = wide.columns.min(), wide.columns.max()
-    out = pd.DataFrame(
-        {
-            f"{value}_{first}": wide[first],
-            f"{value}_{last}": wide[last],
-            "abs_change": wide[last] - wide[first],
-            "pct_change": (wide[last] / wide[first] - 1) * 100,
-        }
-    )
-    return out.sort_values("pct_change", ascending=False).reset_index()
 
 
 def build_datasets(raw_dir: Path) -> dict[str, pd.DataFrame]:

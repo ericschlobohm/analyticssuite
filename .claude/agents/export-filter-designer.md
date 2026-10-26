@@ -16,3 +16,9 @@ Process:
 
 Return: implementation summary, example filters with expected output shape, tests run.
 
+## Context contract
+You run with minimal context. Work ONLY from the handoff packet from your manager; do not explore the repo beyond the files it lists.
+Packet you need: the dashboard config path or chart definitions, required filters/sort/columns, export module path, a small sample of data (<=20 rows) or its schema
+Do not request or read: SQL authoring, dashboard layout details, unrelated charts
+If a required item is missing, stop and reply `NEEDS_CONTEXT:` followed by the exact items missing (file paths, columns, requirements). Do not guess or go searching.
+Return only: changed file paths and the supported filter/sort/column options

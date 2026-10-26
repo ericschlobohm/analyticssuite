@@ -1,9 +1,9 @@
 """Build the CMS Medicare GAF / fee-schedule payment dashboard (CY2022-CY2026).
 
 Usage:
-    python examples/cms_medicare_dashboard.py
+    python examples/cms_medicare/build_dashboard.py
 
-Outputs (examples/output/cms_medicare/): dashboard.html, dashboard_config.json, and CSV datasets.
+Outputs (examples/cms_medicare/output/): dashboard.html, dashboard_config.json, and CSV datasets.
 """
 
 from __future__ import annotations
@@ -15,10 +15,11 @@ from pathlib import Path
 import pandas as pd
 import plotly.graph_objects as go
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "src"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from snowflake_analytics_agents import cms_medicare as cms  # noqa: E402
+import cms_data as cms  # noqa: E402
 from snowflake_analytics_agents.dashboard import (  # noqa: E402
     ChartConfig,
     ChartType,
@@ -26,96 +27,43 @@ from snowflake_analytics_agents.dashboard import (  # noqa: E402
     DashboardLayout,
     FilterConfig,
 )
+from snowflake_analytics_agents.dashboard_toolkit import (  # noqa: E402
+    DIVERGING_SCALE,
+    bar_extremes,
+    choropleth_change,
+    first_last_change,
+    indexed_lines,
+    kpi_cards,
+    render_html,
+    style_figure,
+    table_figure,
+)
 
-OUT_DIR = ROOT / "examples" / "output" / "cms_medicare"
-DIVERGING = "RdBu"
-UP, DOWN = "#2166ac", "#b2182b"
-
-
-def _style(fig: go.Figure, title: str, height: int = 450) -> go.Figure:
-    fig.update_layout(title=title, height=height, template="plotly_white", margin=dict(l=40, r=20, t=60, b=40))
-    return fig
-
-
-def map_state_change(summary: pd.DataFrame, title: str) -> go.Figure:
-    lim = float(summary["pct_change"].abs().max())
-    fig = go.Figure(
-        go.Choropleth(
-            locations=summary["state"],
-            z=summary["pct_change"],
-            locationmode="USA-states",
-            colorscale=DIVERGING,
-            zmin=-lim,
-            zmax=lim,
-            colorbar=dict(title="% change"),
-            hovertemplate="%{location}<br>%{z:.2f}%<extra></extra>",
-        )
-    )
-    fig.update_geos(scope="usa")
-    return _style(fig, title, 520)
-
-
-def bar_extremes(summary: pd.DataFrame, n: int = 10) -> go.Figure:
-    ext = pd.concat([summary.head(n), summary.tail(n)]).sort_values("pct_change")
-    colors = [DOWN if v < 0 else UP for v in ext["pct_change"]]
-    fig = go.Figure(go.Bar(x=ext["pct_change"], y=ext["state"], orientation="h", marker_color=colors))
-    fig.update_xaxes(title="% change in average GAF")
-    fig.update_yaxes(type="category")
-    return _style(fig, f"Largest and smallest GAF change by state (top/bottom {n})", 520)
-
-
-def line_states(yearly: pd.DataFrame, summary: pd.DataFrame, n: int = 5) -> go.Figure:
-    base = yearly[yearly["year"] == yearly["year"].min()].set_index("state")["gaf"]
-    idx = yearly.assign(index=lambda d: d["gaf"] / d["state"].map(base) * 100)
-    fig = go.Figure()
-    picks = [(s, UP) for s in summary.head(n)["state"]] + [(s, DOWN) for s in summary.tail(n)["state"]]
-    for state, color in picks:
-        d = idx[idx["state"] == state]
-        fig.add_trace(go.Scatter(x=d["year"], y=d["index"], mode="lines+markers", name=state, line=dict(color=color)))
-    fig.update_xaxes(dtick=1)
-    fig.update_yaxes(title=f"GAF index ({int(idx['year'].min())} = 100)")
-    return _style(fig, f"GAF trend: {n} biggest gainers (blue) and decliners (red)")
+OUT_DIR = Path(__file__).resolve().parent / "output"
+RAW_DIR = ROOT / "data" / "cms_raw"
 
 
 def bar_localities(loc_summary: pd.DataFrame, names: pd.DataFrame, n: int = 8) -> go.Figure:
     merged = loc_summary.merge(names, on=["state", "locality"])
     merged["label"] = merged["state"] + " - " + merged["locality_name"].str.slice(0, 40)
-    ext = pd.concat([merged.head(n), merged.tail(n)]).sort_values("pct_change")
-    colors = [DOWN if v < 0 else UP for v in ext["pct_change"]]
-    fig = go.Figure(go.Bar(x=ext["pct_change"], y=ext["label"], orientation="h", marker_color=colors))
-    fig.update_xaxes(title="% change in GAF")
-    fig = _style(fig, f"Localities with the largest and smallest GAF change (top/bottom {n})", 520)
-    fig.update_layout(margin=dict(l=300, r=20, t=60, b=40))
-    return fig
+    return bar_extremes(merged, "label", f"Localities with the largest and smallest GAF change (top/bottom {n})",
+                        n=n, left_margin=300)
 
 
 def line_components(gaf: pd.DataFrame) -> go.Figure:
     comp = gaf.groupby("year")[["gpci_work", "gpci_pe", "gpci_mp", "gaf"]].mean().reset_index()
-    fig = go.Figure()
-    for col, name in [("gpci_work", "Work GPCI"), ("gpci_pe", "Practice expense GPCI"),
-                      ("gpci_mp", "Malpractice GPCI"), ("gaf", "Blended GAF")]:
-        fig.add_trace(go.Scatter(x=comp["year"], y=comp[col] / comp[col].iloc[0] * 100, mode="lines+markers", name=name))
-    fig.update_xaxes(dtick=1)
-    fig.update_yaxes(title="Index (first year = 100)")
-    return _style(fig, "Average of GPCI components across localities (index)")
+    long = comp.melt(id_vars="year", var_name="component", value_name="value")
+    long["component"] = long["component"].map(
+        {"gpci_work": "Work GPCI", "gpci_pe": "Practice expense GPCI", "gpci_mp": "Malpractice GPCI", "gaf": "Blended GAF"}
+    )
+    return indexed_lines(long, "component", "value", "Average of GPCI components across localities (index)")
 
 
 def line_national_payment(pay: pd.DataFrame) -> go.Figure:
-    nat = pay.groupby(["year", "hcpcs", "description"], as_index=False)["national_payment"].first()
-    fig = go.Figure()
-    for hcpcs, d in nat.groupby("hcpcs"):
-        d = d.sort_values("year")
-        fig.add_trace(
-            go.Scatter(
-                x=d["year"], y=d["national_payment"] / d["national_payment"].iloc[0] * 100,
-                mode="lines+markers", name=f"{hcpcs} {d['description'].iloc[0][:28]}",
-                customdata=d["national_payment"],
-                hovertemplate="%{x}: $%{customdata:.2f} (index %{y:.1f})<extra>" + hcpcs + "</extra>",
-            )
-        )
-    fig.update_xaxes(dtick=1)
-    fig.update_yaxes(title="Index (first year = 100)")
-    return _style(fig, "National base payment by procedure (GPCI = 1.0), indexed", 520)
+    nat = pay.groupby(["year", "hcpcs"], as_index=False)["national_payment"].first()
+    nat["label"] = nat["hcpcs"].map(lambda h: f"{h} {cms.PROCEDURES[h][0][:28]}")
+    return indexed_lines(nat, "label", "national_payment",
+                         "National base payment by procedure (GPCI = 1.0), indexed", height=520)
 
 
 def map_payment_dropdown(pay: pd.DataFrame) -> go.Figure:
@@ -124,7 +72,7 @@ def map_payment_dropdown(pay: pd.DataFrame) -> go.Figure:
     summaries = {}
     for code in codes:
         yearly = pay[pay["hcpcs"] == code].groupby(["state", "year"], as_index=False)["payment"].mean()
-        summaries[code] = cms.change_summary(yearly, "payment")
+        summaries[code] = first_last_change(yearly, "payment")
     lim = max(float(s["pct_change"].abs().max()) for s in summaries.values())
     fig = go.Figure()
     for i, code in enumerate(codes):
@@ -132,7 +80,7 @@ def map_payment_dropdown(pay: pd.DataFrame) -> go.Figure:
         fig.add_trace(
             go.Choropleth(
                 locations=s["state"], z=s["pct_change"], locationmode="USA-states",
-                colorscale=DIVERGING, zmin=-lim, zmax=lim, visible=(i == 0),
+                colorscale=DIVERGING_SCALE, zmin=-lim, zmax=lim, visible=(i == 0),
                 colorbar=dict(title="% change"),
                 customdata=s[[f"payment_{first}", f"payment_{last}"]],
                 hovertemplate="%{location}<br>%{z:.2f}%<br>$%{customdata[0]:.2f} to $%{customdata[1]:.2f}<extra></extra>",
@@ -145,7 +93,7 @@ def map_payment_dropdown(pay: pd.DataFrame) -> go.Figure:
     ]
     fig.update_layout(updatemenus=[dict(buttons=buttons, x=0.0, y=1.15, xanchor="left")])
     fig.update_geos(scope="usa")
-    return _style(fig, f"Change in average Medicare payment by state, {first} to {last}", 560)
+    return style_figure(fig, f"Change in average Medicare payment by state, {first} to {last}", 560)
 
 
 def table_payments(pay: pd.DataFrame) -> go.Figure:
@@ -158,13 +106,7 @@ def table_payments(pay: pd.DataFrame) -> go.Figure:
                      round(b["payment"].min(), 2), round(b["payment"].max(), 2)])
     t = pd.DataFrame(rows, columns=["HCPCS", "Procedure", "Setting", f"National {first}", f"National {last}",
                                     "% change", f"Lowest locality {last}", f"Highest locality {last}"])
-    fig = go.Figure(
-        go.Table(
-            header=dict(values=list(t.columns), fill_color="#2c3e50", font=dict(color="white"), align="left"),
-            cells=dict(values=[t[c] for c in t.columns], fill_color="#f7f7f7", align="left"),
-        )
-    )
-    return _style(fig, "Procedure base payments (USD) and locality range", 520)
+    return table_figure(t, "Procedure base payments (USD) and locality range")
 
 
 def kpi_html(summary: pd.DataFrame, gaf: pd.DataFrame) -> str:
@@ -180,26 +122,7 @@ def kpi_html(summary: pd.DataFrame, gaf: pd.DataFrame) -> str:
         ("Greatest GAF decrease", fmt(summary.tail(3).iloc[::-1])),
         ("Least changed", fmt(least)),
     ]
-    return "".join(f'<div class="kpi"><div class="k">{k}</div><div class="v">{v}</div></div>' for k, v in cards)
-
-
-def render_html(sections: list[tuple[str, go.Figure]], kpis: str, notes: str) -> str:
-    parts = [
-        f"<section><h2>{heading}</h2>"
-        + fig.to_html(full_html=False, include_plotlyjs=(i == 0))
-        + "</section>"
-        for i, (heading, fig) in enumerate(sections)
-    ]
-    body = "".join(parts)
-    return f"""<!doctype html><html><head><meta charset="utf-8"><title>Medicare GAF Dashboard</title>
-<style>body{{font-family:Segoe UI,Arial,sans-serif;margin:0;background:#f0f2f5;color:#222}}
-header{{background:#1f3a5f;color:#fff;padding:18px 28px}}main{{padding:16px 28px;max-width:1300px;margin:auto}}
-.kpis{{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px}}.kpi{{background:#fff;border-radius:6px;padding:10px 14px;flex:1;min-width:200px}}
-.k{{font-size:12px;color:#666;text-transform:uppercase}}.v{{font-size:15px;font-weight:600;margin-top:4px}}
-section{{background:#fff;border-radius:6px;padding:8px 16px;margin-bottom:16px}}.notes{{font-size:13px;color:#444}}</style></head>
-<body><header><h1>Medicare Geographic Adjustment Factors &amp; Fee Schedule Payments</h1>
-<div>CMS Physician Fee Schedule, CY2022-CY2026</div></header><main>
-<div class="kpis">{kpis}</div>{body}<section class="notes"><h2>Methodology &amp; notes</h2>{notes}</section></main></body></html>"""
+    return kpi_cards(cards)
 
 
 NOTES = """<ul>
@@ -252,30 +175,33 @@ def build_config(first: int, last: int) -> DashboardConfig:
 
 def main() -> None:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
-    data = cms.build_datasets(ROOT / "data" / "cms_raw")
+    data = cms.build_datasets(RAW_DIR)
     gaf, pay = data["gaf_locality"], data["payments_locality"]
     first, last = int(gaf["year"].min()), int(gaf["year"].max())
 
     state_gaf = cms.state_yearly(gaf, "gaf")
-    state_summary = cms.change_summary(state_gaf, "gaf")
+    state_summary = first_last_change(state_gaf, "gaf")
     loc = gaf.assign(loc=gaf["state"] + "|" + gaf["locality"].astype(str))[["loc", "year", "gaf"]]
-    loc_summary = cms.change_summary(loc, "gaf", key="loc")
+    loc_summary = first_last_change(loc, "gaf", key="loc")
     loc_summary[["state", "locality"]] = loc_summary["loc"].str.split("|", expand=True)
     loc_summary["locality"] = loc_summary["locality"].astype(int)
     names = gaf[["state", "locality", "locality_name"]].drop_duplicates()
 
     sections = [
         ("Where did GAF change the most? (state average, first to last year)",
-         map_state_change(state_summary, f"% change in average GAF, CY{first} to CY{last}")),
-        ("Ranking of greatest and least changed states", bar_extremes(state_summary)),
-        ("GAF trend over time", line_states(state_gaf, state_summary)),
+         choropleth_change(state_summary["state"], state_summary["pct_change"],
+                           f"% change in average GAF, CY{first} to CY{last}")),
+        ("Ranking of greatest and least changed states", bar_extremes(state_summary, "state", "Largest and smallest GAF change by state (top/bottom 10)")),
+        ("GAF trend over time", indexed_lines(state_gaf, "state", "gaf", "GAF trend: 5 biggest gainers (blue) and decliners (red)",
+                       highlight_up=state_summary.head(5)["state"], highlight_down=state_summary.tail(5)["state"])),
         ("Locality detail", bar_localities(loc_summary, names)),
         ("What drives GAF: GPCI components", line_components(gaf)),
         ("Base payments by procedure over time", line_national_payment(pay)),
         ("Payment change by state for a selected procedure", map_payment_dropdown(pay)),
         ("Procedure payment table", table_payments(pay)),
     ]
-    html = render_html(sections, kpi_html(state_summary, gaf), NOTES)
+    html = render_html("Medicare Geographic Adjustment Factors & Fee Schedule Payments",
+                       f"CMS Physician Fee Schedule, CY{first}-CY{last}", sections, kpi_html(state_summary, gaf), NOTES)
     (OUT_DIR / "dashboard.html").write_text(html, encoding="utf-8")
 
     gaf.to_csv(OUT_DIR / "gaf_by_locality.csv", index=False)

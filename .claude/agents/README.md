@@ -64,3 +64,7 @@ Explicit @-mention examples:
 Checkers and validators return a PASS/FAIL verdict plus findings; wrappers loop failures back to the creator.
 
 Example: `@"analytics-workflow-manager (agent)" add a weekly conversion by channel query and export it as CSV`
+
+## Minimal-context delegation
+
+Specialists (creators, checkers, validators) do not receive conversation history. Each has a **Context contract** section listing the only inputs it needs, what it must not read, and what it returns; missing inputs produce a `NEEDS_CONTEXT` reply. Manager agents (`analytics-workflow-manager`, `dashboard-workflow-manager`, `analytics-code-quality-manager`) build a **context packet** (TASK / INPUTS / CONSTRAINTS / ACCEPTANCE / RETURN) for each delegation, passing file paths, schemas and short excerpts rather than full files. Read-only checkers and creators without a need to execute code have their tool lists reduced accordingly.

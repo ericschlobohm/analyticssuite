@@ -17,3 +17,9 @@ Process:
 
 Return: changed files, tests run with results, and assumptions.
 
+## Context contract
+You run with minimal context. Work ONLY from the handoff packet from your manager; do not explore the repo beyond the files it lists.
+Packet you need: feature requirement, target file path(s), signatures/APIs of the specific modules it must call (paths), input/output data shape, acceptance criteria
+Do not request or read: SQL review output, dashboard configs, docs, unrelated modules
+If a required item is missing, stop and reply `NEEDS_CONTEXT:` followed by the exact items missing (file paths, columns, requirements). Do not guess or go searching.
+Return only: changed file paths and a 3-line summary of behaviour and assumptions

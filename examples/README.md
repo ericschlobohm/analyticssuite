@@ -274,3 +274,7 @@ csv = export_agent.export_as_csv(dashboard, "chart_1")
 - [docs/architecture.md](../docs/architecture.md) - Architecture and design details
 - [pyproject.toml](../pyproject.toml) - Project configuration
 
+
+## Dataset-based examples
+
+- [cms_medicare/](cms_medicare/README.md): Medicare GAF and fee-schedule payment dashboard built from public CMS data using the shared `dashboard_toolkit` (see [docs/dashboard_toolkit.md](../docs/dashboard_toolkit.md)). Run: `python examples/cms_medicare/build_dashboard.py`.

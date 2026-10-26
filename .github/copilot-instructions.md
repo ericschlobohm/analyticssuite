@@ -138,3 +138,7 @@ For review requests:
 - "Bring docs in sync with current code" -> `workspace-docs-sync`
 - "Run full quality checks before merge" -> `workspace-quality-gate`
 - "Audit pyproject dependencies for unused packages" -> `workspace-dependency-hygiene`
+
+## Minimal-Context Delegation
+
+When delegating, send each specialist only the context packet it needs (task, input paths/schemas, constraints, acceptance criteria, expected return). Managers determine the packet; see `.claude/agents/README.md`.
