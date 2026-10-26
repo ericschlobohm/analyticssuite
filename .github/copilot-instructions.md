@@ -142,3 +142,5 @@ For review requests:
 ## Minimal-Context Delegation
 
 When delegating, send each specialist only the context packet it needs (task, input paths/schemas, constraints, acceptance criteria, expected return). Managers determine the packet; see `.claude/agents/README.md`.
+
+- Every folder under examples/ must include a SOURCES.md linking to all data sources and references it uses.

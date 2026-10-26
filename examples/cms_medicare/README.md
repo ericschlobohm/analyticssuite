@@ -25,6 +25,9 @@ Open `output/dashboard.html` in a browser.
 
 ## Source and method
 
+All source links: [SOURCES.md](SOURCES.md).
+
+
 * Source: [CMS PFS Relative Value Files](https://www.cms.gov/medicare/payment/fee-schedules/physician/pfs-relative-value-files)
   (final release per year): Addendum E (GPCIs by locality) and the national RVU file (RVUs, conversion factor).
 * **GAF** is derived here: 0.50866 × work GPCI + 0.44839 × practice-expense GPCI + 0.04295 × malpractice GPCI
@@ -43,3 +46,4 @@ Add the year to `YEARS` and its zip URL to `CMS_ZIP_URLS` in `cms_data.py`, then
 
 A new example should provide: a loader that returns long-format (key, year, value) frames, and a build script
 that calls `first_last_change`, the toolkit figure helpers, and `render_html`.
+

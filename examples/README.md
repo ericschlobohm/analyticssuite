@@ -278,3 +278,8 @@ csv = export_agent.export_as_csv(dashboard, "chart_1")
 ## Dataset-based examples
 
 - [cms_medicare/](cms_medicare/README.md): Medicare GAF and fee-schedule payment dashboard built from public CMS data using the shared `dashboard_toolkit` (see [docs/dashboard_toolkit.md](../docs/dashboard_toolkit.md)). Run: `python examples/cms_medicare/build_dashboard.py`.
+- [cdc_places/](cdc_places/README.md): CDC PLACES county chronic-disease prevalence 2019–2023. Run: `python examples/cdc_places/build_dashboard.py`.
+- [cms_care_compare/](cms_care_compare/README.md): CMS Care Compare hospital star ratings and readmissions (snapshot). Run: `python examples/cms_care_compare/build_dashboard.py`.
+- [medicaid_diabetes_a1c/](medicaid_diabetes_a1c/README.md): Medicaid diabetes HbA1c poor-control rates by state 2020–2024 (type 1 + type 2 combined). Run: `python examples/medicaid_diabetes_a1c/build_dashboard.py`.
+
+Every example folder contains a `SOURCES.md` linking to all of its data sources and references (required convention).

@@ -137,3 +137,8 @@ logs/
 
 # Downloaded CMS raw files
 data/cms_raw/
+
+data/cdc_places_raw/
+data/care_compare_raw/
+data/medicaid_raw/
+examples/cdc_places/output/dashboard.html
