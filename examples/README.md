@@ -1,10 +1,48 @@
-# Dashboard Examples
+# Examples
 
-This directory contains practical examples of creating, configuring, and exporting Snowflake analytics dashboards.
+This directory contains two kinds of examples:
 
-Note: example scripts write files to the current working directory because output paths are relative.
+1. **Dataset dashboards** (recommended starting point): four folders that turn public data into static HTML
+   dashboards using the shared [`dashboard_toolkit`](../docs/dashboard_toolkit.md).
+2. **Dashboard-config scripts**: `sales_dashboard_example.py`, `customer_dashboard_example.py`,
+   `dashboard_examples.py` and `snowflake_connection_examples.py`, which use the Snowflake agent classes.
 
-## Examples Included
+## Dataset examples
+
+Prerequisites: `pip install -e ".[dev]"` plus `pip install pandas plotly requests` (not yet declared in
+`pyproject.toml`). Run all commands from the repository root; scripts locate `data/` and `output/` themselves.
+
+| Folder | What it shows | Run | Raw cache (gitignored) | Output |
+|--------|---------------|-----|------------------------|--------|
+| [cms_medicare/](cms_medicare/README.md) | Medicare GAF and fee-schedule payments, CY2022â€“CY2026 | `python examples/cms_medicare/build_dashboard.py` | `data/cms_raw/` | `output/dashboard.html`, CSVs, `dashboard_config.json` |
+| [cdc_places/](cdc_places/README.md) | County chronic-disease prevalence 2019â€“2023 | `python examples/cdc_places/build_dashboard.py` | `data/cdc_places_raw/` | `output/dashboard.html` (gitignored), CSVs |
+| [cms_care_compare/](cms_care_compare/README.md) | Hospital star ratings and readmissions (current snapshot) | `python examples/cms_care_compare/build_dashboard.py` | `data/care_compare_raw/` | `output/dashboard.html`, `state_summary.csv` |
+| [medicaid_diabetes_a1c/](medicaid_diabetes_a1c/README.md) | Medicaid diabetes HbA1c poor control by state, 2020â€“2024 (type 1 + type 2 combined) | `python examples/medicaid_diabetes_a1c/build_dashboard.py` | `data/medicaid_raw/` | `output/dashboard.html`, CSVs |
+
+The first run downloads data (network required); later runs reuse the cache. Open `output/dashboard.html` in a browser.
+
+Each folder contains `README.md`, `SOURCES.md`, a `*_data.py` loader, `build_dashboard.py` and `output/`.
+**Convention:** every example folder must have a `SOURCES.md` linking to all data sources and references it uses
+(checked by `tests/test_examples_health_datasets.py`).
+
+### Adding a new example
+
+1. Create `examples/<name>/` with:
+   * `<name>_data.py`: downloads/caches raw files under `data/<name>_raw/` and returns cleaned long-format
+     (key, year, value) frames. Reuse `download_zip` for zip archives; send a `User-Agent` header if the site rejects defaults.
+   * `build_dashboard.py`: computes `first_last_change`, builds figures with the toolkit
+     (`choropleth_change`, `bar_extremes`, `indexed_lines`, `table_figure`), then writes
+     `output/dashboard.html` via `render_html` (plus any CSVs). Copy the `ROOT`/`RAW_DIR`/`OUT_DIR` pattern from an existing example.
+   * `README.md` (run command, files table, method and caveats) and `SOURCES.md` (links to every source).
+2. Add `data/<name>_raw/` to `.gitignore` (and any generated output you do not want to commit).
+3. Add offline unit tests under `tests/` (see `tests/test_examples_health_datasets.py`) and add the folder name to
+   the `test_every_example_lists_sources` parametrization.
+4. List the example in the table above and in the root [README](../README.md).
+5. Run `python -m pytest tests -q --no-cov`.
+
+## Dashboard-config scripts
+
+Note: these scripts write files to the current working directory because output paths are relative.
 
 ### 1. Sales Dashboard (`sales_dashboard_example.py`)
 
@@ -39,7 +77,7 @@ python examples/sales_dashboard_example.py
 
 ### 2. Customer Dashboard (`customer_dashboard_example.py`)
 
-A customer-focused dashboard with 8 charts for tracking acquisition, retention, health, and lifetime value.
+A customer-focused dashboard with 10 charts for tracking acquisition, retention, health, and lifetime value.
 
 **Charts:**
 - Total Customers (Metric)
@@ -272,14 +310,5 @@ csv = export_agent.export_as_csv(dashboard, "chart_1")
 
 - [README.md](../README.md) - Main project documentation
 - [docs/architecture.md](../docs/architecture.md) - Architecture and design details
+- [docs/dashboard_toolkit.md](../docs/dashboard_toolkit.md) - Shared dashboard toolkit API
 - [pyproject.toml](../pyproject.toml) - Project configuration
-
-
-## Dataset-based examples
-
-- [cms_medicare/](cms_medicare/README.md): Medicare GAF and fee-schedule payment dashboard built from public CMS data using the shared `dashboard_toolkit` (see [docs/dashboard_toolkit.md](../docs/dashboard_toolkit.md)). Run: `python examples/cms_medicare/build_dashboard.py`.
-- [cdc_places/](cdc_places/README.md): CDC PLACES county chronic-disease prevalence 2019–2023. Run: `python examples/cdc_places/build_dashboard.py`.
-- [cms_care_compare/](cms_care_compare/README.md): CMS Care Compare hospital star ratings and readmissions (snapshot). Run: `python examples/cms_care_compare/build_dashboard.py`.
-- [medicaid_diabetes_a1c/](medicaid_diabetes_a1c/README.md): Medicaid diabetes HbA1c poor-control rates by state 2020–2024 (type 1 + type 2 combined). Run: `python examples/medicaid_diabetes_a1c/build_dashboard.py`.
-
-Every example folder contains a `SOURCES.md` linking to all of its data sources and references (required convention).

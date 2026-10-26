@@ -6,6 +6,9 @@ Hospital overall star ratings and 30-day pneumonia readmission rates by state, o
 python examples/cms_care_compare/build_dashboard.py   # downloads to data/care_compare_raw/ (gitignored)
 ```
 
+Requires `pandas`, `plotly` and `requests`. Writes `output/dashboard.html` and `output/state_summary.csv`.
+Tests: `tests/test_examples_health_datasets.py`.
+
 | File | Purpose |
 |------|---------|
 | `care_compare_data.py` | Provider Data Catalog paging/caching, join of star ratings and readmissions, state summary |

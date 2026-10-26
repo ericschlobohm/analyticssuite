@@ -7,6 +7,9 @@ state extremes, and trends. Lower is better.
 python examples/medicaid_diabetes_a1c/build_dashboard.py   # caches to data/medicaid_raw/ (gitignored)
 ```
 
+Requires `pandas`, `plotly` and `requests`. Writes `output/dashboard.html`, `output/state_year_poor_control.csv` and
+`output/state_change.csv`. Tests: `tests/test_examples_health_datasets.py`.
+
 | File | Purpose |
 |------|---------|
 | `medicaid_data.py` | data.medicaid.gov dataset IDs, download/cache, cleaning, state/national aggregation |

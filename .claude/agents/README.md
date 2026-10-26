@@ -2,7 +2,8 @@
 
 This directory defines project-level Claude subagents for the existing analytics agent set.
 
-Each subagent uses YAML frontmatter plus a focused system prompt body, based on:
+Each subagent uses YAML frontmatter plus a focused system prompt body. The original generalists are based on the
+Python classes:
 - `WriterAgent`
 - `ReviewerAgent`
 - `CorrectorAgent`
@@ -11,27 +12,56 @@ Each subagent uses YAML frontmatter plus a focused system prompt body, based on:
 - `DashboardTesterAgent`
 - `DashboardExportAgent`
 
+The specialist and manager agents extend these with narrower, context-minimal roles (see below).
+
 These are discovered automatically by Claude Code from `.claude/agents/`.
 
-## Subagents
+## Subagents (31)
 
+Wrappers / managers:
+- `analytics-workflow-manager`
+- `dashboard-workflow-manager`
+- `analytics-code-quality-manager`
+- `workspace-maintenance-orchestrator`
+
+Creation specialists:
+- `snowflake-sql-writer`
+- `python-analytics-writer`
+- `dashboard-config-builder`
+- `export-filter-designer`
+- `analytics-doc-writer`
+
+Legacy generalists (fallbacks):
 - `analytics-writer`
-- `analytics-reviewer`
-- `analytics-corrector`
 - `analytics-documenter`
 - `dashboard-builder`
-- `dashboard-tester`
 - `dashboard-exporter`
+
+Checkers and validators:
+- `sql-accuracy-checker`
+- `analytics-security-reviewer`
+- `analytics-performance-reviewer`
+- `analytics-reviewer`
+- `dashboard-config-validator`
+- `export-validator`
+- `test-validator`
+- `dashboard-tester`
+
+Correction:
+- `analytics-corrector`
+
+Workspace maintenance:
 - `workspace-review`
 - `workspace-cleanup`
 - `workspace-git-interaction`
 - `workspace-repo-sync`
 - `workspace-release-maintenance`
-- `workspace-maintenance-orchestrator`
 - `workspace-code-formatting`
 - `workspace-docs-sync`
 - `workspace-quality-gate`
 - `workspace-dependency-hygiene`
+
+Routing policy for the main assistant lives in [`.github/copilot-instructions.md`](../../.github/copilot-instructions.md). Policy: every example folder under `examples/` must contain a `SOURCES.md` linking to all of its data sources.
 
 ## Usage
 
@@ -42,6 +72,7 @@ Natural language delegation examples:
 Explicit @-mention examples:
 - `@"analytics-reviewer (agent)" review the query in src/...`
 - `@"dashboard-exporter (agent)" suggest export filters for chart_1`
+- `@"workspace-docs-sync (agent)" bring README and docs in sync with the code`
 - `@"workspace-review (agent)" audit this repository and recommend improvements`
 - `@"workspace-cleanup (agent)" remove low-risk stale files after the review`
 - `@"workspace-code-formatting (agent)" format Python and markdown files for consistency`

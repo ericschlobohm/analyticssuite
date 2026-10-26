@@ -11,11 +11,15 @@ A suite of AI-powered agents designed to write, review, correct, and document an
 - **Dashboard Builder Agent**: Designs and generates Tableau-like dashboard configurations
 - **Dashboard Tester Agent**: Validates and tests dashboard queries and performance
 - **Dashboard Export Agent**: Exports dashboard data to CSV with flexible filtering on all columns
+- **Dashboard Toolkit**: Dataset-agnostic helpers (pandas + plotly) for static change-over-time HTML dashboards, with four public-data examples (CMS Medicare, CDC PLACES, CMS Care Compare, Medicaid diabetes HbA1c)
+- **Claude subagents**: 31 project-level subagents in `.claude/agents/` (workflow managers, specialist writers/checkers/validators, workspace maintenance); see [.claude/agents/README.md](.claude/agents/README.md)
 
 ## Project Structure
 
 ```
 analyticssuite/
+├── .claude/agents/               # Claude subagent definitions + README
+├── .github/copilot-instructions.md  # Subagent delegation policy
 ├── src/snowflake_analytics_agents/
 │   ├── __init__.py
 │   ├── __main__.py
@@ -25,27 +29,36 @@ analyticssuite/
 │   ├── dashboard.py              # Dashboard data models
 │   ├── dashboard_agents.py       # Dashboard builder/tester agents
 │   ├── dashboard_export_agent.py # Dashboard CSV export agent
+│   ├── dashboard_toolkit.py      # Shared plotly/pandas dashboard helpers
 │   ├── export.py                 # Export filters and operators
 │   ├── credentials.py            # Credential providers and manager
 │   ├── snowflake_client.py       # Snowflake connection & utilities
 │   └── utils.py                  # Helper functions
 ├── tests/
-│   ├── __init__.py
 │   ├── test_agents.py
 │   ├── test_credentials.py
 │   ├── test_dashboards.py
+│   ├── test_dashboard_toolkit.py
+│   ├── test_example_cms_medicare.py
+│   ├── test_examples_health_datasets.py
 │   └── test_export.py
 ├── docs/
 │   ├── architecture.md
+│   ├── dashboard_toolkit.md
 │   ├── AWS_SECRETS_MANAGER.md
 │   ├── CREDENTIALS_IMPLEMENTATION.md
 │   └── QUICK_START.md
 ├── examples/
 │   ├── README.md
+│   ├── cms_medicare/             # each dataset example: README.md, SOURCES.md,
+│   ├── cdc_places/               #   *_data.py, build_dashboard.py, output/
+│   ├── cms_care_compare/
+│   ├── medicaid_diabetes_a1c/
 │   ├── sales_dashboard_example.py
 │   ├── customer_dashboard_example.py
 │   ├── dashboard_examples.py
 │   └── snowflake_connection_examples.py
+├── data/                         # Raw dataset caches (*_raw/ folders are gitignored)
 ├── .env.example                  # Environment variables template
 ├── .gitignore
 ├── pyproject.toml                # Package configuration
@@ -136,6 +149,10 @@ analytics-agents dashboard export-preview \
 analytics-agents dashboard export-columns --chart-id sales_chart
 ```
 
+Note: `write`, `review`, `correct` and `document` use the placeholder agents, and `dashboard test`,
+`export-data`, `export-preview` and `export-columns` currently echo their arguments rather than processing a
+dashboard. `dashboard create` and the Python API below are functional; `dashboard export --format html` writes a basic HTML skeleton.
+
 ### Python API
 
 ```python
@@ -220,12 +237,25 @@ print(f"Preview: {preview['preview_rows']} rows (of {preview['total_rows_availab
 
 ## Examples
 
-Check the [examples/](examples/) directory for practical dashboard examples:
+Check the [examples/](examples/README.md) directory.
+
+**Dataset dashboards** (built with the shared [dashboard toolkit](docs/dashboard_toolkit.md); need `pandas`, `plotly`, `requests`; each folder has a `SOURCES.md`):
+
+| Example | Run |
+|---------|-----|
+| [CMS Medicare GAF & payments](examples/cms_medicare/README.md) | `python examples/cms_medicare/build_dashboard.py` |
+| [CDC PLACES county health](examples/cdc_places/README.md) | `python examples/cdc_places/build_dashboard.py` |
+| [CMS Care Compare hospital quality](examples/cms_care_compare/README.md) | `python examples/cms_care_compare/build_dashboard.py` |
+| [Medicaid diabetes HbA1c](examples/medicaid_diabetes_a1c/README.md) | `python examples/medicaid_diabetes_a1c/build_dashboard.py` |
+
+Raw downloads are cached under `data/*_raw/` (gitignored); outputs go to each example's `output/` folder.
+To add one, see [Adding a new example](examples/README.md#adding-a-new-example).
+
+**Dashboard-config scripts:**
 
 - **[Sales Dashboard](examples/sales_dashboard_example.py)** - Revenue metrics, trends, and performance
 - **[Customer Dashboard](examples/customer_dashboard_example.py)** - Acquisition, retention, and lifetime value
 
-Run examples with:
 ```bash
 python examples/sales_dashboard_example.py
 python examples/customer_dashboard_example.py
@@ -236,8 +266,8 @@ python examples/customer_dashboard_example.py
 ### Running Tests
 
 ```bash
-pytest
-pytest --cov  # With coverage report
+python -m pytest tests -q --no-cov
+python -m pytest tests            # with coverage report (default addopts in pyproject.toml)
 ```
 
 ### Code Quality
@@ -317,8 +347,11 @@ aws secretsmanager create-secret \
 See documentation files for detailed information:
 
 - [docs/architecture.md](docs/architecture.md) - Agent design and integration patterns
+- [docs/dashboard_toolkit.md](docs/dashboard_toolkit.md) - Shared dashboard toolkit API
+- [docs/QUICK_START.md](docs/QUICK_START.md) - Credential quick start
 - [docs/AWS_SECRETS_MANAGER.md](docs/AWS_SECRETS_MANAGER.md) - Secure credential management
-- [examples/README.md](examples/README.md) - Dashboard examples and usage patterns
+- [examples/README.md](examples/README.md) - Dataset dashboards, config examples, and how to add an example
+- [.claude/agents/README.md](.claude/agents/README.md) - Claude subagents
 
 ## License
 

@@ -4,6 +4,9 @@
 
 This document describes the architecture, design patterns, and workflow for the Snowflake Analytics Agents suite.
 
+Note: the Python agent classes currently return placeholder output (no LLM call); the roles below describe the
+intended behavior and the public interfaces. The dashboard models, export filtering, credential providers and
+`dashboard_toolkit` are fully implemented.
 ## Agent Roles
 
 ### 1. Writer Agent
@@ -360,149 +363,97 @@ Code ready for production
    Live analytics available to users
 ```
 
-### Combined Analytics & Dashboard Workflow
+### Claude subagent workflow
 
-For a complete analytics pipeline:
+The Python agents above are mirrored by project-level Claude subagents in `.claude/agents/`
+(see [.claude/agents/README.md](../.claude/agents/README.md)). Start with a wrapper such as
+`analytics-workflow-manager` or `dashboard-workflow-manager`; it routes to creators, runs checkers/validators
+and loops failures back to the creator (max 3 iterations).
+
+---
+
+## Dashboard toolkit and dataset examples
+
+`src/snowflake_analytics_agents/dashboard_toolkit.py` is a separate, dataset-agnostic layer (pandas + plotly) for
+static, change-over-time HTML dashboards. It does not use Snowflake or the agent classes. Each dataset example under
+`examples/` (`cms_medicare`, `cdc_places`, `cms_care_compare`, `medicaid_diabetes_a1c`) supplies a loader module
+and a `build_dashboard.py` that calls the toolkit. See [dashboard_toolkit.md](dashboard_toolkit.md) and
+[examples/README.md](../examples/README.md).
 
 ---
 
 ## Configuration & Customization
 
-### Agent Configuration
+Settings come from `load_config()` (`config.py`): environment variables, then an optional YAML file, then defaults.
+
+### Agent configuration
 ```yaml
 agents:
-  writer:
-    model: "gpt-4"  # LLM to use
-    temperature: 0.3  # Lower = more deterministic
-    max_tokens: 2000
-    
-  reviewer:
-    checks:
-      - performance
-      - security
-      - style
-    thresholds:
-      performance_score_min: 70
-      
-  corrector:
-    max_retries: 3
-    auto_fix: true
-    
-  documenter:
-    default_format: markdown
-    include_examples: true
+  timeout: 300      # seconds (AGENT_TIMEOUT)
+  max_retries: 3    # AGENT_MAX_RETRIES
+  debug: false      # DEBUG
+  log_level: INFO   # LOG_LEVEL
 ```
 
-### Snowflake Connection
+### Snowflake connection
 ```yaml
 snowflake:
   account: my_account
   warehouse: compute_wh
   database: analytics
-  schema: dbt_prod
+  schema: PUBLIC
+  # optional: role, region
 ```
+
+Each field can be overridden by `SNOWFLAKE_<FIELD>` environment variables (e.g. `SNOWFLAKE_ACCOUNT`). Credentials
+can also come from AWS Secrets Manager; see [AWS_SECRETS_MANAGER.md](AWS_SECRETS_MANAGER.md).
 
 ---
 
 ## Extension Points
 
-### Adding Custom Checks to ReviewerAgent
+All agents subclass `BaseAgent` (`agents.py`) and implement `execute(...)`.
 
-```python
-class ReviewerAgent(BaseAgent):
-    def add_custom_check(self, check_name: str, check_func):
-        """Add a custom code review check."""
-        self.checks[check_name] = check_func
-```
-
-### Adding New Documentation Formats
-
-```python
-class DocumenterAgent(BaseAgent):
-    def register_format(self, format_name: str, formatter):
-        """Register a new documentation format."""
-        self.formatters[format_name] = formatter
-```
-
-### Integrating with External Services
-
-```python
-# Connect to LLM providers
-from snowflake_analytics_agents.llm import OpenAIProvider, AnthropicProvider
-
-# Connect to monitoring systems
-from snowflake_analytics_agents.monitoring import DatadogClient
-
-# Connect to version control
-from snowflake_analytics_agents.vcs import GitHubClient
-```
+- **New agent**: subclass `BaseAgent`, implement `execute`, export it from `__init__.py`, add tests in `tests/`.
+- **Review checks**: `ReviewerAgent.review_code(code, code_type, checks=[...])` accepts a list of checks to run.
+- **Credentials**: implement `CredentialProvider` (`credentials.py`) and register it with `CredentialManager.add_provider(name, provider)`.
+- **New dataset dashboard**: add an example folder (see [examples/README.md](../examples/README.md#adding-a-new-example)).
+- **New Claude subagent**: add a `.claude/agents/<name>.md` file and list it in `.claude/agents/README.md`.
 
 ---
 
 ## Security Considerations
 
-### Credential Management
-- Snowflake credentials stored in `.env` (never in code)
-- Support for IAM roles and SSO
-- Credential rotation without code changes
-
-### Query Safety
-- No hardcoded credentials in generated code
-- SQL injection prevention through parameterized queries
-- Input validation for user-provided parameters
-
-### Code Review
-- ReviewerAgent flags security anti-patterns
-- Automatic detection of sensitive data access
-- Audit logging of all agent operations
-
----
-
-## Performance & Scaling
-
-### Query Optimization
-- ReviewerAgent analyzes query plans before production
-- Automatic suggestion of indexes and materialized views
-- Cost estimation before execution
-
-### Async Operations
-```python
-# Can handle long-running operations
-code = await writer_agent.generate_query_async(description)
-review = await reviewer_agent.review_code_async(code)
-```
-
-### Caching
-- Cache generated code patterns
-- Cache Snowflake schema introspection results
-- Cache previous reviews to avoid duplicate checks
+- Snowflake credentials come from environment variables / `.env` (gitignored) or AWS Secrets Manager; never
+  hardcode them. See [AWS_SECRETS_MANAGER.md](AWS_SECRETS_MANAGER.md).
+- Generated code should use parameterized queries and validate user input.
+- `analytics-security-reviewer` (Claude subagent) audits code for credential leaks and injection risks.
+- Dashboard toolkit HTML escapes titles, headings and KPI text; `kpis_html`/`notes_html` are trusted fragments.
 
 ---
 
 ## Testing Strategy
 
-### Unit Tests
-- Test individual agent methods
-- Mock Snowflake connections
-- Verify output format and content
+Run `python -m pytest tests -q --no-cov` (coverage is enabled by default through `pyproject.toml`).
 
-### Integration Tests
-- Test against real Snowflake test warehouse
-- Verify end-to-end workflows
-- Test error recovery and edge cases
+| Test file | Covers |
+|-----------|--------|
+| `test_agents.py` | Writer/Reviewer/Corrector/Documenter agents |
+| `test_dashboards.py` | Dashboard models, builder and tester agents |
+| `test_export.py` | Export filters and `DashboardExportAgent` |
+| `test_credentials.py` | Credential providers and manager |
+| `test_dashboard_toolkit.py` | Shared dashboard toolkit |
+| `test_example_cms_medicare.py` | CMS Medicare calculations (offline) |
+| `test_examples_health_datasets.py` | PLACES, Care Compare, Medicaid cleaning/aggregation and `SOURCES.md` presence |
 
-### Quality Tests
-- Generated code must pass linting
-- Generated code must be executable
-- Documentation must be complete and accurate
+Tests are offline; Snowflake and network access are not required.
 
 ---
 
 ## Future Enhancements
 
-1. **Multi-Language Support**: Support for dbt, Python, Scala
-2. **Version Control Integration**: Auto-commit generated code to Git
-3. **Collaborative Features**: Multiple agents reviewing same code
-4. **ML-Powered Optimization**: Learn from past queries to improve suggestions
-5. **Real-time Monitoring**: Monitor query performance and auto-correct regressions
-6. **Advanced Analytics**: Complex feature engineering code generation
+1. **Multi-Language Support**: dbt, Scala
+2. **LLM-backed agents**: `WriterAgent`, `ReviewerAgent`, `CorrectorAgent` and `DocumenterAgent` are currently
+   placeholders (templates / empty review results) with the interfaces described above
+3. **Real dashboard rendering and export in the CLI**: `dashboard test`, `export-data`, `export-preview` and
+   `export-columns` are currently placeholders that echo their arguments

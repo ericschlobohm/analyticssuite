@@ -11,7 +11,7 @@ shared [`dashboard_toolkit`](../../src/snowflake_analytics_agents/dashboard_tool
 python examples/cms_medicare/build_dashboard.py
 ```
 
-The first run downloads five CMS zips (~tens of MB) into `data/cms_raw/` (gitignored); later runs use the cache.
+Requires `pandas`, `plotly` and `requests`. The first run downloads five CMS zips (~tens of MB) into `data/cms_raw/` (gitignored); later runs use the cache.
 Open `output/dashboard.html` in a browser.
 
 ## Files
@@ -20,7 +20,8 @@ Open `output/dashboard.html` in a browser.
 |------|---------|
 | `cms_data.py` | CMS-specific loading: URLs, GPCI/RVU parsing, GAF derivation, payment formula |
 | `build_dashboard.py` | Builds figures with the toolkit, writes HTML, CSVs and a `DashboardConfig` JSON |
-| `output/` | Generated `dashboard.html`, CSV datasets, `dashboard_config.json` |
+| `SOURCES.md` | Links to every data source and reference |
+| `output/` | Generated `dashboard.html`, `dashboard_config.json`, and CSVs (`gaf_by_locality`, `gaf_by_state_year`, `gaf_state_change`, `gaf_locality_change`, `payments_by_locality_procedure`) |
 | `../../tests/test_example_cms_medicare.py` | Offline unit tests for the calculations |
 
 ## Source and method
@@ -44,6 +45,5 @@ Add the year to `YEARS` and its zip URL to `CMS_ZIP_URLS` in `cms_data.py`, then
 
 ## Using this as a template
 
-A new example should provide: a loader that returns long-format (key, year, value) frames, and a build script
-that calls `first_last_change`, the toolkit figure helpers, and `render_html`.
+See [Adding a new example](../README.md#adding-a-new-example).
 

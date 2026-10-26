@@ -7,6 +7,9 @@ uninsured adults, with a state change map (dropdown per measure), state/county e
 python examples/cdc_places/build_dashboard.py   # downloads to data/cdc_places_raw/ (gitignored), writes output/
 ```
 
+Requires `pandas`, `plotly` and `requests`. Writes `output/dashboard.html` (gitignored; regenerate locally) and one
+`output/state_change_<measure>.csv` per measure. Tests: `tests/test_examples_health_datasets.py`.
+
 | File | Purpose |
 |------|---------|
 | `places_data.py` | Socrata release IDs, download/cache, cleaning, population-weighted state aggregation |
