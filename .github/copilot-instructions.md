@@ -144,3 +144,10 @@ For review requests:
 When delegating, send each specialist only the context packet it needs (task, input paths/schemas, constraints, acceptance criteria, expected return). Managers determine the packet; see `.claude/agents/README.md`.
 
 - Every folder under examples/ must include a SOURCES.md linking to all data sources and references it uses.
+
+## Push Gate (required for every push to a remote)
+
+Before ANY `git push` (any branch, including merges to `main`), run two independent agents on the exact commits/files being pushed:
+1. **Secret checker** (`security-review` or `analytics-reviewer`): scans the diff and tracked files for exposed secrets, passwords, API keys, tokens, connection strings, private keys, and committed `.env`/credential files.
+2. **Adversarial finder**: separately tries to locate secrets or passwords using only what is available in the project (working tree, full git history of the commits being pushed, config/docs/examples/test fixtures, gitignored-but-present files that could leak via tooling).
+Push only if BOTH report PASS. If either reports a finding, do not push; report the findings and fix or get explicit user direction first.
